@@ -102,7 +102,7 @@ body {
 }
 
 
-/* *** ថ្មី: Styles សម្រាប់លាក់ Header ពេល Search *** */
+/* *** Styles សម្រាប់លាក់ Header ពេល Search *** */
 #employeeListHeader, #employeeListHelpText {
     transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
     overflow: hidden;
@@ -118,9 +118,62 @@ body {
     margin-bottom: 0;
 }
 
-/* *** ថ្មី: Style សម្រាប់ Search Container Transition *** */
+/* *** Style សម្រាប់ Search Container Transition *** */
 #searchContainer {
     transition: transform 0.3s ease;
     position: relative; 
     z-index: 10; /* ដាក់ z-index ខ្ពស់ជាង header បន្តិច */
 }
+
+
+/* --- *** ថ្មី: Styles សម្រាប់ Footer Navigation Bar *** --- */
+.nav-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    color: #6b7280; /* text-gray-500 */
+    background-color: transparent;
+    border: none;
+    padding: 0.5rem 0;
+    transition: color 0.2s ease;
+    cursor: pointer;
+}
+
+.nav-button:hover {
+    color: #3b82f6; /* text-blue-500 */
+}
+
+.nav-button.active-nav {
+    color: #2563eb; /* text-blue-600 */
+    font-weight: 600;
+}
+
+/* --- *** ចប់ Styles សម្រាប់ Footer Navigation Bar *** --- */
+
+
+
+
+
+
+
+/* style.css (បន្ថែមនៅខាងក្រោមสุด) */
+
+/* --- ថ្មី: Styles សម្រាប់ Blur Effect --- */
+#employeeListHeader, #employeeListHelpText {
+    position: relative;
+    z-index: 5;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+#searchContainer {
+    transition: transform 0.3s ease;
+    position: relative;
+    z-index: 10;
+}
+.content-blurred {
+    filter: blur(4px);
+    opacity: 0.7;
+    pointer-events: none;
+}
+/* --- ចប់ Styles សម្រាប់ Blur Effect --- */
