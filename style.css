@@ -122,8 +122,8 @@ body {
     padding-bottom: 1.5rem; 
     
     /* សម្រាប់ browser ថ្មី (iPhone/Android)
-      វានឹងយក Safe Area ពីខាងក្រោម (ឧ. 34px) 
-      បូកនឹង 0.75rem (12px) ទៀត ឱ្យវានៅឃ្លាតស្អាត
+       វានឹងយក Safe Area ពីខាងក្រោម (ឧ. 34px) 
+       បូកនឹង 0.75rem (12px) ទៀត ឱ្យវានៅឃ្លាតស្អាត
     */
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
 }
@@ -137,7 +137,7 @@ body {
     color: #6b7280; /* text-gray-500 */
     background-color: transparent;
     border: none;
-    padding: 0.5rem 0;
+    /* padding: 0.5rem 0; */ /* << ដកចេញ ព្រោះយើងកំណត់ Padding លើ <nav> វិញ */
     transition: color 0.2s ease;
     cursor: pointer;
 }
