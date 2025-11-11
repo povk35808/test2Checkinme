@@ -107,12 +107,26 @@ body {
 
 /* --- *** ថ្មី: Styles សម្រាប់ Footer Navigation Bar *** --- */
 
-/* --- នេះគឺជាការកែប្រែ --- */
-/* បន្ថែម Padding ខាងក្រោម (Safe Area) 24px ទៅក្នុង <nav> */
+/* កែប្រែ៖
+  1. override h-16 (4rem) របស់ Tailwind ឱ្យទៅជា auto
+  2. ប្រើ padding ខាងលើ និង ខាងក្រោម ជំនួសវិញ
+  3. ប្រើ env(safe-area-inset-bottom) ដើម្បីរុញប៊ូតុងឱ្យផុត Home Bar
+*/
 #footerNav nav {
-    padding-bottom: 2.5rem; /* 24px */
+    height: auto; /* Override h-16 */
+    
+    /* 8px padding ធម្មតា សម្រាប់ខាងលើ */
+    padding-top: 0.5rem; 
+    
+    /* Fallback សម្រាប់ browser ចាស់ (1.5rem = 24px) */
+    padding-bottom: 1.5rem; 
+    
+    /* សម្រាប់ browser ថ្មី (iPhone/Android)
+      វានឹងយក Safe Area ពីខាងក្រោម (ឧ. 34px) 
+      បូកនឹង 0.75rem (12px) ទៀត ឱ្យវានៅឃ្លាតស្អាត
+    */
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
 }
-/* --- ចប់ការកែប្រែ --- */
 
 .nav-button {
     display: flex;
