@@ -110,7 +110,7 @@ body {
 /* --- នេះគឺជាការកែប្រែ --- */
 /* បន្ថែម Padding ខាងក្រោម (Safe Area) 24px ទៅក្នុង <nav> */
 #footerNav nav {
-    padding-bottom: 1.5rem; /* 24px */
+    padding-bottom: 2.5rem; /* 24px */
 }
 /* --- ចប់ការកែប្រែ --- */
 
