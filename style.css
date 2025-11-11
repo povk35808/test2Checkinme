@@ -102,38 +102,39 @@ body {
 }
 
 
-/* --- *** ថ្មី: Styles សម្រាប់ Blur Effect (បានជួសជុល z-index) *** --- */
+/* --- *** ថ្មី: Styles សម្រាប់ Blur Effect (បានជួសជុល z-index ចុងក្រោយ) *** --- */
 
 /* Header នឹងនៅខាងក្រោមគេ */
 #employeeListHeader {
     position: relative;
-    /* z-index: 5; (លុប z-index ចេញ) */
+    z-index: 5; /* << ដាក់ z-index ឱ្យវា (ក្រោមគេ) */
     transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-/* Help Text (ក៏នៅក្រោមដែរ) */
-#employeeListHelpText {
-    position: relative;
-    /* z-index: 5; (លុប z-index ចេញ) */
-    transition: filter 0.3s ease, opacity 0.3s ease;
-}
-
-/* ផ្ទៃ Content មិនត្រូវការ z-index ទៀតទេ */
+/* ផ្ទៃ Content ទាំងមូល (រួមទាំង Search) ត្រូវតែនៅពីលើ Header */
 #employeeListContent {
     position: relative;
-    /* z-index: 10; (លុប z-index ចេញ) */
+    z-index: 10; /* << ត្រូវតែខ្ពស់ជាង Header */
+    background-color: #ffffff; /* << ថ្មី: បន្ថែមផ្ទៃខាងក្រោយពណ៌ស (សំខាន់!) */
+}
+
+/* Help Text (នៅខាងក្នុង Content) */
+#employeeListHelpText {
+    position: relative;
+    z-index: 15; /* ខ្ពស់ជាង Content តែក្រោម Search */
+    transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
 /* ធានាថា Search Container នៅពីលើគេ (ក្នុង Content) */
 #searchContainer {
     position: relative;
-    z-index: 30; /* << ត្រូវតែមាន z-index ខ្ពស់ */
+    z-index: 20; /* << ខ្ពស់ជាង HelpText */
     transition: transform 0.3s ease;
 }
 
 /* ធានាថា បញ្ជី Dropdown នៅលើគេបង្អស់ */
 #employeeListContainer {
-    z-index: 30; /* << ត្រូវតែមាន z-index ខ្ពស់បំផុត */
+    z-index: 30; /* << ខ្ពស់បំផុត */
 }
 
 /* Class សម្រាប់ Blur (រក្សាទុកដដែល) */
