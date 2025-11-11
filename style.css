@@ -127,7 +127,7 @@ body {
 /* ធានាថា Search Container នៅពីលើគេ (ក្នុង Content) */
 #searchContainer {
     position: relative;
-    z-index: 20; /* << ត្រូវតែមាន z-index ខ្ពស់ */
+    z-index: 30; /* << ត្រូវតែមាន z-index ខ្ពស់ */
     transition: transform 0.3s ease;
 }
 
