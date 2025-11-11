@@ -107,33 +107,33 @@ body {
 /* Header នឹងនៅខាងក្រោមគេ */
 #employeeListHeader {
     position: relative;
-    z-index: 5; /* ដាក់វានៅក្រោមគេ */
+    /* z-index: 5; (លុប z-index ចេញ) */
     transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
 /* Help Text (ក៏នៅក្រោមដែរ) */
 #employeeListHelpText {
     position: relative;
-    z-index: 5; 
+    /* z-index: 5; (លុប z-index ចេញ) */
     transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-/* ថ្មី: ដាក់ផ្ទៃ Content ទាំងមូល (រួមទាំង Search) ឱ្យនៅពីលើ Header */
+/* ផ្ទៃ Content មិនត្រូវការ z-index ទៀតទេ */
 #employeeListContent {
     position: relative;
-    z-index: 20; /* ដាក់ឱ្យខ្ពស់ជាង Header */
+    /* z-index: 10; (លុប z-index ចេញ) */
 }
 
 /* ធានាថា Search Container នៅពីលើគេ (ក្នុង Content) */
 #searchContainer {
     position: relative;
-    z-index: 20; /* ខ្ពស់ជាង HelpText */
+    z-index: 20; /* << ត្រូវតែមាន z-index ខ្ពស់ */
     transition: transform 0.3s ease;
 }
 
 /* ធានាថា បញ្ជី Dropdown នៅលើគេបង្អស់ */
 #employeeListContainer {
-    z-index: 30; 
+    z-index: 30; /* << ត្រូវតែមាន z-index ខ្ពស់បំផុត */
 }
 
 /* Class សម្រាប់ Blur (រក្សាទុកដដែល) */
