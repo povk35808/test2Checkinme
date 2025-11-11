@@ -1380,6 +1380,17 @@ async function handleCheckOut() {
 
 // --- Event Listeners ---
  
+// << ថ្មី: បានបន្ថែម 'input' listener ត្រឡប់មកវិញ >>
+searchInput.addEventListener('input', (e) => {
+    // Logic ស្វែងរក
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredEmployees = allEmployees.filter(emp => 
+        emp.name.toLowerCase().includes(searchTerm) ||
+        emp.id.toLowerCase().includes(searchTerm)
+    );
+    renderEmployeeList(filteredEmployees); 
+});
+ 
 // << ថ្មី: ជំនួស Listeners ទាំងពីរនេះ (ប្រើ Blur Effect + TranslateY) >>
 searchInput.addEventListener('focus', () => {
     // 1. គណនាកម្ពស់ (តែ Header ប៉ុណ្ណោះ)
@@ -1393,7 +1404,7 @@ searchInput.addEventListener('focus', () => {
     // នេះនឹងទុកកន្លែងទំនេរ (Padding) ស្មើនឹងកម្ពស់ Help Text
     searchContainer.style.transform = `translateY(-${headerHeight}px)`;
     
-    // 4. បង្ហាញបញ្ជី
+    // 4. បង្ហាញបញ្ជី (ពេលដំបូងបង្ហាញទាំងអស់)
     renderEmployeeList(allEmployees); 
 });
 
