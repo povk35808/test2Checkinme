@@ -17,14 +17,14 @@
 
     <div class="max-w-md w-full h-screen h-dvh md:h-auto md:min-h-[700px] md:max-h-[90vh] bg-white md:rounded-2xl shadow-xl overflow-hidden flex flex-col relative">
 
-        <div id="loadingView" class="view p-8 flex flex-col items-center justify-center min-h-[400px] flex-1">
+        <div id="loadingView" class="view p-8 flex flex-col items-center justify-center min-h-[400px]" style="display: none;">
             <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Company Logo" class="w-32 h-32 object-contain mb-6">
             <div class="loader"></div>
             <p id="loadingText" class="mt-4 text-gray-600 text-lg">កំពុងទាញទិន្នន័យបុគ្គលិក...</p>
             <p class="text-sm text-gray-500">សូមរង់ចាំបន្តិច</p>
         </div>
 
-        <div id="employeeListView" class="view flex flex-col flex-1" style="display: none;">
+        <div id="employeeListView" class="view flex flex-col" style="display: none;">
             
             <div id="employeeListHeader" class="p-6 pt-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white flex flex-col items-center shadow-md">
                 <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Company Logo" class="w-24 h-24 object-contain mb-4 rounded-full border-4 border-white shadow-lg">
@@ -45,8 +45,9 @@
                     </div>
                 </div>
             </div>
-            </div>
-        <div id="homeView" class="view flex flex-col flex-1" style="display: none;">
+        </div>
+
+        <div id="homeView" class="view flex flex-col" style="display: none;">
             
             <div class="p-6 flex justify-between items-center">
                 <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Logo" class="w-12 h-12 object-contain">
@@ -146,8 +147,9 @@
                     </div>
                 </div>
             </div>
-            </div>
-        <div id="historyView" class="view flex flex-col flex-1" style="display: none;">
+        </div>
+
+        <div id="historyView" class="view flex flex-col" style="display: none;">
             <div class="p-6 pt-10 bg-white border-b border-gray-200 sticky top-0 z-10">
                 <h1 class="text-2xl font-bold text-center text-gray-800">ប្រវត្តិវត្តមាន</h1>
             </div>
@@ -182,6 +184,7 @@
                 </div>
             </div>
         </div>
+
         <footer id="footerNav" class="border-t border-gray-200 bg-white shadow-inner" style="display: none;">
             <nav class="flex justify-around items-center h-16">
                 <button id="navHomeButton" class="nav-button active-nav">
@@ -243,8 +246,7 @@
             <div id="cameraLoadingContainer" class="text-center p-4 min-h-[60px]">
                 <p id="cameraLoadingText" class="text-white text-lg font-semibold">
                     កំពុងបើកកាមេរ៉ា...
-                </p>
-                <p id="cameraHelpText" class="text-gray-300 text-sm">សូមដាក់មុខរបស់អ្នកឱ្យចំកាមេរ៉ា</p>
+                </s"text-gray-300 text-sm">សូមដាក់មុខរបស់អ្នកឱ្យចំកាមេរ៉ា</p>
             </div>
 
             <button id="captureButton"
