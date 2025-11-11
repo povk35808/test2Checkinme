@@ -121,7 +121,7 @@ body {
 /* ថ្មី: ដាក់ផ្ទៃ Content ទាំងមូល (រួមទាំង Search) ឱ្យនៅពីលើ Header */
 #employeeListContent {
     position: relative;
-    z-index: 10; /* ដាក់ឱ្យខ្ពស់ជាង Header */
+    z-index: 20; /* ដាក់ឱ្យខ្ពស់ជាង Header */
 }
 
 /* ធានាថា Search Container នៅពីលើគេ (ក្នុង Content) */
