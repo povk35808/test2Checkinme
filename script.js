@@ -12,11 +12,14 @@ import {
     updateDoc,
     collection,
     onSnapshot,
-    setLogLevel
+    setLogLevel,
+    query, // << ត្រូវការសម្រាប់ Query ច្បាប់
+    where, // << ត្រូវការសម្រាប់ Query ច្បាប់
+    getDocs // << ត្រូវការសម្រាប់ Query ច្បាប់
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Global Variables ---
-let db, auth;
+let dbAttendance, dbLeave, authAttendance; 
 let allEmployees = [];
 let currentMonthRecords = []; 
 let currentUser = null;
@@ -31,6 +34,22 @@ let currentUserFaceMatcher = null;
 let currentScanAction = null; // 'checkIn' or 'checkOut'
 let videoStream = null;
 const FACE_MATCH_THRESHOLD = 0.5;
+
+// --- << ថ្មី: Map សម្រាប់បកប្រែ Duration ជាអក្សរខ្មែរ >> ---
+const durationMap = {
+    "មួយថ្ងៃកន្លះ": 1.5,
+    "ពីរថ្ងៃ": 2,
+    "ពីរថ្ងៃកន្លះ": 2.5,
+    "បីថ្ងៃ": 3,
+    "បីថ្ងៃកន្លះ": 3.5,
+    "បួនថ្ងៃ": 4,
+    "បួនថ្ងៃកន្លះ": 4.5,
+    "ប្រាំថ្ងៃ": 5,
+    "ប្រាំថ្ងៃកន្លះ": 5.5,
+    "ប្រាំមួយថ្ងៃ": 6,
+    "ប្រាំមួយថ្ងៃកន្លះ": 6.5,
+    "ប្រាំពីរថ្ងៃ": 7
+};
 
 // --- Google Sheet Configuration ---
 const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
@@ -53,8 +72,8 @@ const COL_INDEX = {
     PHOTO: 31   // AJ: រូបថត (Link ត្រង់)
 };
 
-// --- Firebase Configuration ---
-const firebaseConfig = {
+// --- Firebase Configuration (Attendance) ---
+const firebaseConfigAttendance = {
     apiKey: "AIzaSyCgc3fq9mDHMCjTRRHD3BPBL31JkKZgXFc",
     authDomain: "checkme-10e18.firebaseapp.com",
     projectId: "checkme-10e18",
@@ -63,6 +82,18 @@ const firebaseConfig = {
     appId: "1:1030447497157:web:9792086df1e864559fd5ac",
     measurementId: "G-QCJ2JH4WH6"
 };
+
+// --- ថ្មី: Firebase Configuration (Leave Requests) ---
+const firebaseConfigLeave = {
+    apiKey: "AIzaSyDjr_Ha2RxOWEumjEeSdluIW3JmyM76mVk",
+    authDomain: "dipermisstion.firebaseapp.com",
+    projectId: "dipermisstion",
+    storageBucket: "dipermisstion.firebasestorage.app",
+    messagingSenderId: "512999406057",
+    appId: "1:512999406057:web:953a281ab9dde7a9a0f378",
+    measurementId: "G-KDPHXZ7H4B"
+};
+
 
 // --- តំបន់ទីតាំង (Polygon Geofence) ---
 const allowedAreaCoords = [
@@ -76,9 +107,18 @@ const allowedAreaCoords = [
 const loadingView = document.getElementById('loadingView');
 const loadingText = document.getElementById('loadingText');
 const employeeListView = document.getElementById('employeeListView');
-const attendanceView = document.getElementById('attendanceView');
+
+// << ថ្មី: DOM Elements សម្រាប់ទំព័រថ្មី >>
+const homeView = document.getElementById('homeView');
+const historyView = document.getElementById('historyView');
+const footerNav = document.getElementById('footerNav');
+const navHomeButton = document.getElementById('navHomeButton');
+const navHistoryButton = document.getElementById('navHistoryButton');
+
 const searchInput = document.getElementById('searchInput');
 const employeeListContainer = document.getElementById('employeeListContainer');
+
+// --- << ជួសជុល: បន្ថែមអថេរដែលបាត់ត្រឡប់មកវិញ >> ---
 const welcomeMessage = document.getElementById('welcomeMessage');
 const logoutButton = document.getElementById('logoutButton');
 const exitAppButton = document.getElementById('exitAppButton');
@@ -93,8 +133,16 @@ const profileShift = document.getElementById('profileShift');
 const checkInButton = document.getElementById('checkInButton');
 const checkOutButton = document.getElementById('checkOutButton');
 const attendanceStatus = document.getElementById('attendanceStatus');
+// --- << ចប់ការជួសជុល >> ---
+
+// តារាងទំព័រដើម (ថ្ងៃនេះ)
 const historyTableBody = document.getElementById('historyTableBody');
 const noHistoryRow = document.getElementById('noHistoryRow');
+// តារាងទំព័រប្រវត្តិ (ប្រចាំខែ)
+const monthlyHistoryTableBody = document.getElementById('monthlyHistoryTableBody');
+const noMonthlyHistoryRow = document.getElementById('noMonthlyHistoryRow');
+
+
 const customModal = document.getElementById('customModal');
 const modalTitle = document.getElementById('modalTitle');
 const modalMessage = document.getElementById('modalMessage');
@@ -119,17 +167,25 @@ const searchContainer = document.getElementById('searchContainer');
 
 // --- Helper Functions ---
 
+// << ថ្មី: បានកែប្រែ Function នេះ (គ្រប់គ្រង Home/History/Nav) >>
 function changeView(viewId) {
+    // លាក់ទាំងអស់
     loadingView.style.display = 'none';
     employeeListView.style.display = 'none';
-    attendanceView.style.display = 'none';
+    homeView.style.display = 'none';
+    historyView.style.display = 'none';
+    footerNav.style.display = 'none'; // លាក់ Nav Bar ជា Default
 
     if (viewId === 'loadingView') {
         loadingView.style.display = 'flex';
     } else if (viewId === 'employeeListView') {
         employeeListView.style.display = 'flex';
-    } else if (viewId === 'attendanceView') {
-        attendanceView.style.display = 'flex';
+    } else if (viewId === 'homeView') {
+        homeView.style.display = 'flex';
+        footerNav.style.display = 'block'; // បង្ហាញ Nav Bar
+    } else if (viewId === 'historyView') {
+        historyView.style.display = 'flex';
+        footerNav.style.display = 'block'; // បង្ហាញ Nav Bar
     }
 }
 
@@ -198,30 +254,47 @@ function getCurrentMonthRange() {
     return { startOfMonth, endOfMonth };
 }
 
-
-function formatTime(date) {
-    if (!date) return '--:--:--';
-    try {
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    } catch (e) {
-        console.error('Invalid date object:', date);
-        return 'Invalid Time';
-    }
-}
-
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 function formatDate(date) {
     if (!date) return '';
     try {
         const day = String(date.getDate()).padStart(2, '0');
         const month = monthNames[date.getMonth()];
         const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
+        return `${day}-${month}-${year}`; // ឧ. "11-Nov-2025"
     } catch (e) {
         console.error('Invalid date for formatDate:', date);
         return 'Invalid Date';
     }
 }
+
+// --- << ថ្មី: មុខងារជំនួយសម្រាប់បម្លែង "11-Nov-2025" ទៅជា Date Object >> ---
+const monthMap = {
+    "Jan": 0, "Feb": 1, "Mar": 2, "Apr": 3, "May": 4, "Jun": 5,
+    "Jul": 6, "Aug": 7, "Sep": 8, "Oct": 9, "Nov": 10, "Dec": 11
+};
+
+function parseLeaveDate(dateString) { // ទទួល "11-Nov-2025"
+    if (!dateString) return null;
+    try {
+        const parts = dateString.split('-'); // ["11", "Nov", "2025"]
+        if (parts.length !== 3) return null;
+        
+        const day = parseInt(parts[0], 10);
+        const month = monthMap[parts[1]];
+        const year = parseInt(parts[2], 10);
+
+        if (isNaN(day) || month === undefined || isNaN(year)) return null;
+
+        return new Date(year, month, day); // ត្រឡប់ Date Object (ម៉ោង 00:00:00)
+    } catch (e) {
+        console.error("Failed to parse leave date:", dateString, e);
+        return null;
+    }
+}
+// --- ------------------------------------------------------------- ---
+
 
 function checkShiftTime(shiftType, checkType) {
     if (!shiftType || shiftType === 'N/A') {
@@ -383,6 +456,184 @@ async function prepareFaceMatcher(imageUrl) {
     }
 }
 
+// << បានជួសជុល Bug ទាំង ៣ >>
+/**
+ * ពិនិត្យមើល Database ច្បាប់ (dipermisstion) សម្រាប់ `out_requests` (ច្បាប់ចេញក្រៅ)
+ */
+async function checkLeaveStatus(employeeId, checkType) {
+    if (!dbLeave) {
+        console.warn("Leave Database (dbLeave) is not initialized.");
+        return null; 
+    }
+
+    const todayString = formatDate(new Date()); // ប្រើ Format "11-Nov-2025"
+    const leaveCollectionPath = "/artifacts/default-app-id/public/data/out_requests";
+
+    console.log(`Checking [out_requests] for ID: ${employeeId} on Date: ${todayString}`);
+
+    const q = query(collection(dbLeave, leaveCollectionPath),
+        where("userId", "==", employeeId),
+        where("startDate", "==", todayString),
+        where("status", "==", "approved") 
+    );
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            console.log("No [out_requests] found for today.");
+            return null; // គ្មានច្បាប់, មិន Block
+        }
+
+        const leaveData = querySnapshot.docs[0].data();
+        const leaveType = leaveData.duration || "N/A"; 
+        const reason = leaveData.reason || "(មិនមានមូលហេតុ)";
+
+        console.log(`Found [out_requests] leave: ${leaveType} (Reason: ${reason})`);
+
+        // សម្រាប់ `out_requests`, យើងសន្មត់ថាលក្ខខណ្ឌគឺដូចគ្នា
+        if (leaveType === "មួយថ្ងៃ") {
+            return { blocked: true, reason: `ច្បាប់ចេញក្រៅមួយថ្ងៃ (${reason})` };
+        }
+        if (leaveType === "មួយព្រឹក" && checkType === 'checkIn') {
+            return { blocked: true, reason: `ច្បាប់ចេញក្រៅមួយព្រឹក (${reason})` };
+        }
+        if (leaveType === "មួយរសៀល" && checkType === 'checkOut') {
+            return { blocked: true, reason: `ច្បាប់ចេញក្រៅមួយរសៀល (${reason})` };
+        }
+        
+        return null;
+
+    } catch (error) {
+        console.error("Error checking [out_requests] status:", error);
+        showMessage('បញ្ហាពិនិត្យច្បាប់', `មិនអាចទាញទិន្នន័យច្បាប់ (out_requests) បានទេ៖ ${error.message}`, true);
+        return { blocked: true, reason: "Error checking leave status." }; 
+    }
+}
+
+// --- << ថ្មី: ជំនួស Function ទាំងមូល (ដោះស្រាយច្បាប់ "មួយថ្ងៃកន្លះ" ...) >> ---
+async function checkFullLeaveStatus(employeeId, checkType) {
+    if (!dbLeave) {
+        console.warn("Leave Database (dbLeave) is not initialized.");
+        return null;
+    }
+
+    const leaveCollectionPath = "/artifacts/default-app-id/public/data/leave_requests";
+    
+    // 1. យកថ្ងៃនេះ (ម៉ោង 00:00:00) សម្រាប់ប្រៀបធៀប
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+    const todayTimestamp = today.getTime(); // យកជាលេខ timestamp សម្រាប់ប្រៀបធៀប
+
+    // 2. យកថ្ងៃនេះ ជា Format "11-Nov-2025" សម្រាប់ប្រៀបធៀប Text
+    const todayString_DD_Mon_YYYY = formatDate(today); 
+
+    console.log(`Checking [leave_requests] for ID: ${employeeId}`);
+
+    // យើងត្រូវទាញយកច្បាប់ "approved" ទាំងអស់របស់ User មក Filter ក្នុង App
+    const q = query(collection(dbLeave, leaveCollectionPath),
+        where("userId", "==", employeeId),
+        where("status", "==", "approved")
+    );
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            console.log("No [leave_requests] found for this user.");
+            return null; // គ្មានច្បាប់, មិន Block
+        }
+
+        for (const doc of querySnapshot.docs) {
+            const data = doc.data();
+            const durationStr = data.duration; // អាចជា "មួយព្រឹក" ឬ "មួយថ្ងៃកន្លះ"
+            const reason = data.reason || "(មិនមានមូលហេតុ)";
+            const startDateStr = data.startDate; // "11-Nov-2025"
+
+            // *** LOGIC ថ្មី: ប្រើ durationMap ដើម្បីបកប្រែ ***
+            const durationNum = durationMap[durationStr] || parseFloat(durationStr); // 1.5, 2, 7, ឬ NaN
+            const isMultiDay = !isNaN(durationNum); // ពិនិត្យមើលថាតើជាលេខឬអត់
+
+            if (isMultiDay) {
+                // --- ករណីច្បាប់ច្រើនថ្ងៃ (1.5, 2, 7...) ---
+                const startLeaveDate = parseLeaveDate(startDateStr);
+                if (!startLeaveDate) {
+                    console.warn("Could not parse start date for multi-day leave:", startDateStr);
+                    continue; // រំលង Document នេះ
+                }
+                
+                const startTimestamp = startLeaveDate.getTime();
+
+                // *** LOGIC គណនាថ្ងៃចុងក្រោយ (បានជួសជុល) ***
+                // យើងមិនពឹងផ្អែកលើ data.endDate ទៀតទេ
+                const daysToSpan = Math.ceil(durationNum); // 1.5 -> 2 ថ្ងៃ, 2 -> 2 ថ្ងៃ
+                
+                // បង្កើត Date Object ថ្មីសម្រាប់ថ្ងៃចុងក្រោយ
+                const endLeaveDate = new Date(startLeaveDate); 
+                endLeaveDate.setDate(startLeaveDate.getDate() + daysToSpan - 1); // 11 + 2 - 1 = 12
+                endLeaveDate.setHours(0, 0, 0, 0); // កំណត់ទៅម៉ោង 00:00:00 នៃថ្ងៃចុងក្រោយ
+                const endTimestamp = endLeaveDate.getTime();
+                // *** ចប់ Logic ជួសជុល ***
+
+                // ពិនិត្យមើលថា "ថ្ងៃនេះ" ស្ថិតនៅក្នុងចន្លោះច្បាប់ឬអត់
+                // (ឧ. today 11, start 11, end 12 -> TRUE)
+                // (ឧ. today 12, start 11, end 12 -> TRUE)
+                // (ឧ. today 13, start 11, end 12 -> FALSE)
+                if (todayTimestamp >= startTimestamp && todayTimestamp <= endTimestamp) {
+                    
+                    // បើ "ថ្ងៃនេះ" ស្ថិតក្នុងចន្លោះ, ពិនិត្យករណីពិសេស (កន្លះថ្ងៃ)
+                    
+                    // តើវាជាច្បាប់កន្លះថ្ងៃមែនទេ (1.5, 2.5...)?
+                    const isHalfDay = durationNum % 1 !== 0; 
+                    
+                    // តើ "ថ្ងៃនេះ" គឺជា "ថ្ងៃចុងក្រោយ" នៃច្បាប់ឬអត់?
+                    if (isHalfDay && (todayTimestamp === endTimestamp)) {
+                        // ថ្ងៃនេះ គឺជាថ្ងៃចុងក្រោយ នៃច្បាប់ (1.5, 2.5...)
+                        // យើងសន្មត់ថាជា "ច្បាប់ព្រឹក"
+                        // ដូច្នេះ Block តែ Check-in, អនុញ្ញាត Check-out
+                        if (checkType === 'checkIn') {
+                            return { blocked: true, reason: `ច្បាប់ ${durationStr} (ព្រឹក) (${reason})` };
+                        } else {
+                            // គាត់ស្កេន Check-out, តែច្បាប់តែព្រឹក -> អនុញ្ញាត
+                            continue; // បន្តទៅពិនិត្យមើល Document ច្បាប់ផ្សេងទៀត (បើមាន)
+                        }
+                    }
+                    
+                    // បើជាច្បាប់ពេញថ្ងៃ (2, 3, 7) ឬ ជាថ្ងៃដំបូង/ថ្ងៃកណ្ដាល នៃច្បាប់ (1.5, 2.5)
+                    // -> Block ទាំងពីរ
+                    console.log(`Block: Multi-day leave found (${durationStr})`);
+                    return { blocked: true, reason: `ច្បាប់ ${durationStr} (${reason})` };
+                }
+
+            } else {
+                // --- ករណីច្បាប់ថ្ងៃតែមួយ ("មួយថ្ងៃ", "មួយព្រឹក"...) ---
+                // (Logic នេះ ដំណើរការត្រឹមត្រូវហើយ)
+                if (startDateStr === todayString_DD_Mon_YYYY) {
+                    console.log(`Found single-day leave for today: ${durationStr}`);
+                    if (durationStr === "មួយថ្ងៃ" || durationStr === "មួយយប់") {
+                        return { blocked: true, reason: `ច្បាប់ ${durationStr} (${reason})` };
+                    }
+                    if (durationStr === "មួយព្រឹក" && checkType === 'checkIn') {
+                        return { blocked: true, reason: `ច្បាប់មួយព្រឹក (${reason})` };
+                    }
+                    if (durationStr === "មួយរសៀល" && checkType === 'checkOut') {
+                        return { blocked: true, reason: `ច្បាប់មួយរសៀល (${reason})` };
+                    }
+                }
+            }
+        } // end for loop
+        
+        // Loop ចប់ហើយ រកមិនឃើញច្បាប់ដែលត្រូវ Block ថ្ងៃនេះ
+        return null;
+
+    } catch (error) {
+        console.error("Error checking [leave_requests] status:", error);
+        showMessage('បញ្ហាពិនិត្យច្បាប់', `មិនអាចទាញទិន្នន័យច្បាប់ (leave_requests) បានទេ៖ ${error.message}`, true);
+        return { blocked: true, reason: "Error checking leave status." };
+    }
+}
+// --- ------------------------------------------------------------- ---
+
+
+// << ថ្មី: បានកែប្រែ Function នេះ (ពិនិត្យច្បាប់ ២ ដំណាក់កាល) >>
 async function startFaceScan(action) {
     currentScanAction = action; 
 
@@ -395,6 +646,37 @@ async function startFaceScan(action) {
         showMessage('បញ្ហា', 'មិនអាចស្កេនមុខបានទេ។ អាចមកពីមិនមានរូបថត Profile ឬរូបថតមិនច្បាស់។', true);
         return;
     }
+
+    // --- *** ថ្មី: ពិនិត្យមើលច្បាប់ ២ ដំណាក់កាល *** ---
+    attendanceStatus.textContent = 'កំពុងពិនិត្យមើលច្បាប់...';
+    attendanceStatus.classList.add('animate-pulse');
+    
+    // ដំណាក់កាលទី ១: ពិនិត្យច្បាប់ចេញក្រៅ (out_requests)
+    const outOfOfficeStatus = await checkLeaveStatus(currentUser.id, action);
+    if (outOfOfficeStatus && outOfOfficeStatus.blocked) {
+        attendanceStatus.classList.remove('animate-pulse');
+        updateButtonState(); 
+        if (!outOfOfficeStatus.reason.includes("Error")) {
+             showMessage('មិនអាចស្កេនបាន', `អ្នកបានសុំច្បាប់៖ ${outOfOfficeStatus.reason}`, true);
+        }
+        return; 
+    }
+
+    // ដំណាក់កាលទី ២: ពិនិត្យច្បាប់ឈប់សម្រាក (leave_requests)
+    const fullLeaveStatus = await checkFullLeaveStatus(currentUser.id, action);
+    
+    attendanceStatus.classList.remove('animate-pulse');
+    updateButtonState(); // Update ស្ថានភាពប៊ូតុងវិញ
+
+    if (fullLeaveStatus && fullLeaveStatus.blocked) {
+        // Blocked!
+        if (!fullLeaveStatus.reason.includes("Error")) {
+             showMessage('មិនអាចស្កេនបាន', `អ្នកបានសុំច្បាប់៖ ${fullLeaveStatus.reason}`, true);
+        }
+        return; 
+    }
+    // --- *** ចប់ការពិនិត្យមើលច្បាប់ *** ---
+
     
     // Reset UI
     cameraLoadingText.textContent = 'កំពុងស្នើសុំកាមេរ៉ា...';
@@ -506,11 +788,21 @@ async function handleCaptureAndAnalyze() {
 
 // --- Main Functions ---
 
+// << ថ្មី: បានកែប្រែ Function នេះ (Init DB ២) >>
 async function initializeAppFirebase() {
     try {
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
+        // Init App 1 (Attendance)
+        const attendanceApp = initializeApp(firebaseConfigAttendance);
+        dbAttendance = getFirestore(attendanceApp);
+        authAttendance = getAuth(attendanceApp);
+        
+        // Init App 2 (Leave)
+        const leaveApp = initializeApp(firebaseConfigLeave, "leaveApp");
+        dbLeave = getFirestore(leaveApp);
+        
+        console.log("Firebase Attendance App Initialized (Default)");
+        console.log("Firebase Leave App Initialized (leaveApp)");
+
         setLogLevel('debug');
         await setupAuthListener(); 
     } catch (error) {
@@ -519,16 +811,17 @@ async function initializeAppFirebase() {
     }
 }
 
+// << ថ្មី: បានកែប្រែ Function នេះ (ប្រើ authAttendance) >>
 async function setupAuthListener() {
     return new Promise((resolve, reject) => {
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(authAttendance, async (user) => {
             if (user) {
                 console.log('Firebase Auth user signed in:', user.uid);
                 await loadAIModels(); 
                 resolve();
             } else {
                 try {
-                    await signInAnonymously(auth);
+                    await signInAnonymously(authAttendance);
                 } catch (error) {
                     console.error("Firebase Sign In Error:", error);
                     showMessage('បញ្ហា Sign In', `មិនអាច Sign In ទៅ Firebase បានទេ: ${error.message}`, true);
@@ -642,6 +935,7 @@ function renderEmployeeList(employees) {
     });
 }
 
+// << ថ្មី: បានកែប្រែ Function នេះ (ប្រើ dbAttendance) >>
 function selectUser(employee) {
     console.log('User selected:', employee);
     currentUser = employee;
@@ -659,7 +953,7 @@ function selectUser(employee) {
     const firestoreUserId = currentUser.id; 
     const simpleDataPath = `attendance/${firestoreUserId}/records`;
     console.log("Using Firestore Path:", simpleDataPath);
-    attendanceCollectionRef = collection(db, simpleDataPath);
+    attendanceCollectionRef = collection(dbAttendance, simpleDataPath); // << ប្រើ dbAttendance
 
     // បំពេញព័ត៌មាន Profile
     welcomeMessage.textContent = `សូមស្វាគមន៍`; 
@@ -672,7 +966,7 @@ function selectUser(employee) {
     profileGrade.textContent = `ថ្នាក់: ${employee.grade}`;
     profileShift.textContent = `វេនថ្ងៃនេះ: ${currentUserShift}`;
 
-    changeView('attendanceView');
+    changeView('homeView'); // << ថ្មី: ទៅទំព័រដើម
     setupAttendanceListener();
 
     // រៀបចំ Face Matcher នៅ Background
@@ -697,18 +991,25 @@ function logout() {
     attendanceCollectionRef = null;
     currentMonthRecords = []; 
     
+    // << ថ្មី: សម្អាតតារាងទាំងពីរ >>
     historyTableBody.innerHTML = '';
     if (noHistoryRow) {
         noHistoryRow.cells[0].textContent = "មិនទាន់មានទិន្នន័យ";
         historyTableBody.appendChild(noHistoryRow);
     }
+    monthlyHistoryTableBody.innerHTML = '';
+    if (noMonthlyHistoryRow) {
+        noMonthlyHistoryRow.cells[0].textContent = "មិនទាន់មានទិន្នន័យ";
+        monthlyHistoryTableBody.appendChild(noMonthlyHistoryRow);
+    }
+    
     searchInput.value = ''; 
     employeeListContainer.classList.add('hidden'); 
     
     changeView('employeeListView');
 }
 
-// << ថ្មី: ជំនួស Function ទាំងមូល (បានកែប្រែ Sort Logic) >>
+// << ថ្មី: ជំនួស Function ទាំងមូល (បានកែប្រែ Sort Logic ឱ្យត្រឹមត្រូវ) >>
 function setupAttendanceListener() {
     if (!attendanceCollectionRef) return;
     
@@ -765,8 +1066,10 @@ function setupAttendanceListener() {
 
         console.log(`Attendance data updated: ${currentMonthRecords.length} records this month (Sorted).`);
         
-        renderHistory(); 
-        updateButtonState();
+        // --- ថ្មី: ហៅ Render ទាំងពីរ ---
+        renderTodayHistory();     // បង្ហាញក្នុងទំព័រដើម
+        renderMonthlyHistory();   // បង្ហាញក្នុងទំព័រប្រវត្តិ
+        updateButtonState();      // Update ប៊ូតុង
         
     }, (error) => {
         console.error("Error listening to attendance:", error);
@@ -776,16 +1079,16 @@ function setupAttendanceListener() {
     });
 }
 
-// << ថ្មី: ជំនួស Function ទាំងមូល (ដោះស្រាយ "អវត្តមាន" និង "ច្បាប់") >>
-function renderHistory() {
-    historyTableBody.innerHTML = ''; // Clear table
+// --- << ថ្មី: មុខងារ Render សម្រាប់ទំព័រប្រវត្តិ (Monthly) >> ---
+function renderMonthlyHistory() {
+    monthlyHistoryTableBody.innerHTML = ''; 
     
-    if (noHistoryRow) {
-         noHistoryRow.cells[0].textContent = "មិនទាន់មានទិន្នន័យ";
+    if (noMonthlyHistoryRow) {
+         noMonthlyHistoryRow.cells[0].textContent = "មិនទាន់មានទិន្នន័យ";
     }
     
     if (currentMonthRecords.length === 0) {
-        if (noHistoryRow) historyTableBody.appendChild(noHistoryRow);
+        if (noMonthlyHistoryRow) monthlyHistoryTableBody.appendChild(noMonthlyHistoryRow);
         return;
     }
 
@@ -795,35 +1098,27 @@ function renderHistory() {
         const formattedDate = record.formattedDate || record.date;
         const isToday = (record.date === todayString);
 
-        // --- ថ្មី: Logic សម្រាប់ Check-In (ដោះស្រាយ "ច្បាប់") ---
+        // Logic សម្រាប់ Check-In (ដោះស្រាយ "ច្បាប់")
         let checkInDisplay;
         if (record.checkIn) {
-            // ពិនិត្យមើលថាតើវាជាម៉ោង (មាន AM/PM) ឬជា Text (ដូចជា "ច្បាប់")
             if (record.checkIn.includes('AM') || record.checkIn.includes('PM')) {
-                // នេះគឺជាម៉ោងធម្មតា
                 checkInDisplay = `<span class="text-green-600 font-semibold">${record.checkIn}</span>`;
             } else {
-                // នេះគឺជា "ច្បាប់" ឬអ្វីផ្សេងទៀត
                 checkInDisplay = `<span class="text-blue-600 font-semibold">${record.checkIn}</span>`;
             }
         } else {
-            // នេះគឺ null/empty
             checkInDisplay = isToday ? '---' : '<span class="text-red-500 font-semibold">អវត្តមាន</span>';
         }
 
-        // --- ថ្មី: Logic សម្រាប់ Check-Out (ដោះស្រាយ "ច្បាប់") ---
+        // Logic សម្រាប់ Check-Out (ដោះស្រាយ "ច្បាប់")
         let checkOutDisplay;
         if (record.checkOut) {
-            // ពិនិត្យមើលថាតើវាជាម៉ោង (មាន AM/PM) ឬជា Text (ដូចជា "ច្បាប់")
             if (record.checkOut.includes('AM') || record.checkOut.includes('PM')) {
-                // នេះគឺជាម៉ោងធម្មតា
                 checkOutDisplay = `<span class="text-red-600 font-semibold">${record.checkOut}</span>`;
             } else {
-                // នេះគឺជា "ច្បាប់" ឬអ្វីផ្សេងទៀត
                 checkOutDisplay = `<span class="text-blue-600 font-semibold">${record.checkOut}</span>`;
             }
         } else {
-            // នេះគឺ null/empty
             checkOutDisplay = isToday ? '<span class="text-gray-400">មិនទាន់ចេញ</span>' : '<span class="text-red-500 font-semibold">អវត្តមាន</span>';
         }
 
@@ -834,8 +1129,62 @@ function renderHistory() {
             <td class="px-4 py-3 whitespace-nowrap text-sm">${checkInDisplay}</td>
             <td class="px-4 py-3 whitespace-nowrap text-sm">${checkOutDisplay}</td>
         `;
-        historyTableBody.appendChild(row);
+        monthlyHistoryTableBody.appendChild(row);
     });
+}
+
+// --- << ថ្មី: មុខងារ Render សម្រាប់ទំព័រដើម (Today) >> ---
+function renderTodayHistory() {
+    historyTableBody.innerHTML = ''; // សម្អាតតារាងទំព័រដើម
+
+    if (noHistoryRow) {
+         noHistoryRow.cells[0].textContent = "មិនទាន់មានទិន្នន័យថ្ងៃនេះ";
+    }
+
+    const todayString = getTodayDateString();
+    const todayRecord = currentMonthRecords.find(record => record.date === todayString);
+
+    if (!todayRecord) {
+        if (noHistoryRow) historyTableBody.appendChild(noHistoryRow);
+        return;
+    }
+
+    // បើមានទិន្នន័យថ្ងៃនេះ, បង្ហាញវា
+    const formattedDate = todayRecord.formattedDate || todayRecord.date;
+    const isToday = true; // ព្រោះយើងបាន Find វារួចហើយ
+
+    // Logic សម្រាប់ Check-In (ដោះស្រាយ "ច្បាប់")
+    let checkInDisplay;
+    if (todayRecord.checkIn) {
+        if (todayRecord.checkIn.includes('AM') || todayRecord.checkIn.includes('PM')) {
+            checkInDisplay = `<span class="text-green-600 font-semibold">${todayRecord.checkIn}</span>`;
+        } else {
+            checkInDisplay = `<span class="text-blue-600 font-semibold">${todayRecord.checkIn}</span>`;
+        }
+    } else {
+        checkInDisplay = '---'; // ថ្ងៃនេះ គឺ "---" មិនមែន "អវត្តមាន"
+    }
+
+    // Logic សម្រាប់ Check-Out (ដោះស្រាយ "ច្បាប់")
+    let checkOutDisplay;
+    if (todayRecord.checkOut) {
+        if (todayRecord.checkOut.includes('AM') || todayRecord.checkOut.includes('PM')) {
+            checkOutDisplay = `<span class="text-red-600 font-semibold">${todayRecord.checkOut}</span>`;
+        } else {
+            checkOutDisplay = `<span class="text-blue-600 font-semibold">${todayRecord.checkOut}</span>`;
+        }
+    } else {
+        checkOutDisplay = '<span class="text-gray-400">មិនទាន់ចេញ</span>'; // ថ្ងៃនេះ គឺ "មិនទាន់ចេញ"
+    }
+
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50';
+    row.innerHTML = `
+        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">${formattedDate}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm">${checkInDisplay}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm">${checkOutDisplay}</td>
+    `;
+    historyTableBody.appendChild(row);
 }
 
 
@@ -862,8 +1211,16 @@ function updateButtonState() {
         if (todayData.checkIn) {
             checkInButton.disabled = true;
             checkOutButton.disabled = false; 
-            attendanceStatus.textContent = `បាន Check-in ម៉ោង: ${todayData.checkIn}`;
-            attendanceStatus.className = 'text-center text-sm text-green-700 pb-4 px-6 h-5';
+            
+            // បើ checkIn ជា "ច្បាប់" មិនត្រូវបង្ហាញម៉ោង
+            if (!todayData.checkIn.includes('AM') && !todayData.checkIn.includes('PM')) {
+                 attendanceStatus.textContent = `ថ្ងៃនេះអ្នកមាន៖ ${todayData.checkIn}`;
+                 attendanceStatus.className = 'text-center text-sm text-blue-700 pb-4 px-6 h-5';
+                 checkOutButton.disabled = true; // បិទ Check-out ដែរ បើ Check-in ជាច្បាប់
+            } else {
+                attendanceStatus.textContent = `បាន Check-in ម៉ោង: ${todayData.checkIn}`;
+                attendanceStatus.className = 'text-center text-sm text-green-700 pb-4 px-6 h-5';
+            }
             
             if (!canCheckOut && !todayData.checkOut) {
                 attendanceStatus.textContent = `ក្រៅម៉ោង Check-out (${currentUserShift})`;
@@ -872,8 +1229,14 @@ function updateButtonState() {
         }
         if (todayData.checkOut) {
             checkOutButton.disabled = true;
-            attendanceStatus.textContent = `បាន Check-out ម៉ោង: ${todayData.checkOut}`;
-            attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
+            
+            if (!todayData.checkOut.includes('AM') && !todayData.checkOut.includes('PM')) {
+                 attendanceStatus.textContent = `ថ្ងៃនេះអ្នកមាន៖ ${todayData.checkOut}`;
+                 attendanceStatus.className = 'text-center text-sm text-blue-700 pb-4 px-6 h-5';
+            } else {
+                attendanceStatus.textContent = `បាន Check-out ម៉ោង: ${todayData.checkOut}`;
+                attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
+            }
         }
     }
 }
@@ -1017,48 +1380,38 @@ async function handleCheckOut() {
 
 // --- Event Listeners ---
  
-// *** បានកែប្រែ: Event Listeners សម្រាប់ Search UI ***
-searchInput.addEventListener('input', (e) => {
-    // Logic ស្វែងរក (រក្សាទុក)
-    const searchTerm = e.target.value.toLowerCase();
-    const filteredEmployees = allEmployees.filter(emp => 
-        emp.name.toLowerCase().includes(searchTerm) ||
-        emp.id.toLowerCase().includes(searchTerm)
-    );
-    renderEmployeeList(filteredEmployees); 
-});
- 
+// << ថ្មី: ជំនួស Listeners ទាំងពីរនេះ (ប្រើ Blur Effect + TranslateY) >>
 searchInput.addEventListener('focus', () => {
-    // 1. គណនាความสูง (ត្រូវតែគណនាមុនពេលលាក់)
+    // 1. គណនាកម្ពស់ (តែ Header ប៉ុណ្ណោះ)
     const headerHeight = employeeListHeader.offsetHeight;
-    const helpTextHeight = employeeListHelpText.offsetHeight;
-    const totalOffset = headerHeight + helpTextHeight;
 
-    // 2. លាក់ Header និង Help Text
-    employeeListHeader.classList.add('header-hidden');
-    employeeListHelpText.classList.add('header-hidden');
+    // 2. បន្ថែម Class 'content-blurred' (Blur Effect)
+    employeeListHeader.classList.add('content-blurred');
+    employeeListHelpText.classList.add('content-blurred');
     
-    // 3. រំកិល Search Container ឡើងលើ
-    searchContainer.style.transform = `translateY(-${totalOffset}px)`;
+    // 3. រំកិល (Translate) Search Container ឡើងលើ (ត្រឹមកម្ពស់ Header)
+    // នេះនឹងទុកកន្លែងទំនេរ (Padding) ស្មើនឹងកម្ពស់ Help Text
+    searchContainer.style.transform = `translateY(-${headerHeight}px)`;
     
-    // បង្ហាញបញ្ជី (រក្សាទុក logic ដើម)
+    // 4. បង្ហាញបញ្ជី
     renderEmployeeList(allEmployees); 
 });
 
 searchInput.addEventListener('blur', () => {
     // យើងប្រើ setTimeout ដើម្បីឱ្យការចុច (mousedown) លើ card ដំណើរការមុន
     setTimeout(() => {
-        // 1. បង្ហាញ Header និង Help Text វិញ
-        employeeListHeader.classList.remove('header-hidden');
-        employeeListHelpText.classList.remove('header-hidden');
+        // 1. ដក Class 'content-blurred' ចេញ
+        employeeListHeader.classList.remove('content-blurred');
+        employeeListHelpText.classList.remove('content-blurred');
         
         // 2. រំកិល Search Container មកវិញ
         searchContainer.style.transform = 'translateY(0)';
         
-        // លាក់បញ្ជី (រក្សាទុក logic ដើម)
+        // 3. លាក់បញ្ជី
         employeeListContainer.classList.add('hidden');
     }, 200); // 200ms delay គឺសំខាន់
 });
+// << ចប់ការជំនួស >>
 
 
 logoutButton.addEventListener('click', () => {
@@ -1094,6 +1447,20 @@ cameraCloseButton.addEventListener('click', hideCameraModal);
 
 // ប៊ូតុងថត ហៅ handleCaptureAndAnalyze
 captureButton.addEventListener('click', handleCaptureAndAnalyze);
+
+// --- << ថ្មី: Event Listeners សម្រាប់ Navigation Bar >> ---
+navHomeButton.addEventListener('click', () => {
+    changeView('homeView');
+    navHomeButton.classList.add('active-nav');
+    navHistoryButton.classList.remove('active-nav');
+});
+
+navHistoryButton.addEventListener('click', () => {
+    changeView('historyView');
+    navHomeButton.classList.remove('active-nav');
+    navHistoryButton.classList.add('active-nav');
+});
+
 
 // --- Initial Call ---
 document.addEventListener('DOMContentLoaded', () => {
