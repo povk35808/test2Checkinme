@@ -102,28 +102,47 @@ body {
 }
 
 
-/* *** Styles សម្រាប់លាក់ Header ពេល Search *** */
-#employeeListHeader, #employeeListHelpText {
-    transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
-    overflow: hidden;
-    max-height: 300px; /* កម្ពស់អតិបរមា (សម្រាប់ transition) */
+/* --- *** ថ្មី: Styles សម្រាប់ Blur Effect (បានជួសជុល z-index) *** --- */
+
+/* Header នឹងនៅខាងក្រោមគេ */
+#employeeListHeader {
+    position: relative;
+    z-index: 5; /* ដាក់វានៅក្រោមគេ */
+    transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-.header-hidden {
-    opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    margin-top: 0;
-    margin-bottom: 0;
+/* Help Text (ក៏នៅក្រោមដែរ) */
+#employeeListHelpText {
+    position: relative;
+    z-index: 5; 
+    transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-/* *** Style សម្រាប់ Search Container Transition *** */
+/* ថ្មី: ដាក់ផ្ទៃ Content ទាំងមូល (រួមទាំង Search) ឱ្យនៅពីលើ Header */
+#employeeListContent {
+    position: relative;
+    z-index: 10; /* ដាក់ឱ្យខ្ពស់ជាង Header */
+}
+
+/* ធានាថា Search Container នៅពីលើគេ (ក្នុង Content) */
 #searchContainer {
+    position: relative;
+    z-index: 20; /* ខ្ពស់ជាង HelpText */
     transition: transform 0.3s ease;
-    position: relative; 
-    z-index: 10; /* ដាក់ z-index ខ្ពស់ជាង header បន្តិច */
 }
+
+/* ធានាថា បញ្ជី Dropdown នៅលើគេបង្អស់ */
+#employeeListContainer {
+    z-index: 30; 
+}
+
+/* Class សម្រាប់ Blur (រក្សាទុកដដែល) */
+.content-blurred {
+    filter: blur(4px);
+    opacity: 0.7;
+    pointer-events: none; 
+}
+/* --- ចប់ Styles សម្រាប់ Blur Effect --- */
 
 
 /* --- *** ថ្មី: Styles សម្រាប់ Footer Navigation Bar *** --- */
@@ -151,29 +170,3 @@ body {
 }
 
 /* --- *** ចប់ Styles សម្រាប់ Footer Navigation Bar *** --- */
-
-
-
-
-
-
-
-/* style.css (បន្ថែមនៅខាងក្រោមสุด) */
-
-/* --- ថ្មី: Styles សម្រាប់ Blur Effect --- */
-#employeeListHeader, #employeeListHelpText {
-    position: relative;
-    z-index: 5;
-    transition: filter 0.3s ease, opacity 0.3s ease;
-}
-#searchContainer {
-    transition: transform 0.3s ease;
-    position: relative;
-    z-index: 10;
-}
-.content-blurred {
-    filter: blur(4px);
-    opacity: 0.7;
-    pointer-events: none;
-}
-/* --- ចប់ Styles សម្រាប់ Blur Effect --- */
